@@ -15,6 +15,9 @@ main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/sys/
 main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/machine/_types.h
 main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/machine/_stdint.h
 main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/sys/_stdint.h
+main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/stdlib.h
+main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/_ti_config.h
+main.obj: C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/linkage.h
 
 ../main.c: 
 C:/ti/ccs900/ccs/ccs_base/msp430/include/msp430.h: 
@@ -31,3 +34,6 @@ C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/sys/_types.h:
 C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/machine/_types.h: 
 C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/machine/_stdint.h: 
 C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/sys/_stdint.h: 
+C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/stdlib.h: 
+C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/_ti_config.h: 
+C:/ti/ccs900/ccs/tools/compiler/ti-cgt-msp430_18.12.1.LTS/include/linkage.h: 

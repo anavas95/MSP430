@@ -1,6 +1,7 @@
 #include <msp430.h> 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define BUTTON  BIT1
 #define LED1    BIT0
@@ -57,14 +58,31 @@
 #define SELF_TEST       0x2E
 #define Reset           0x2F
 
-char buffer[3];
+char buffer[18];
 char buffer_1byte[3];
 
-uint32_t Resultado_20_bits_X;
+volatile  uint32_t Resultado_20_bits_X = 0;
+volatile  uint16_t Resultado_16_bits_X = 0;
+
+volatile  uint32_t Resultado_20_bits_Y = 0;
+volatile  uint16_t Resultado_16_bits_Y = 0;
+
+volatile  uint32_t  Resultado_20_bits_Z = 0;
+volatile  uint16_t Resultado_16_bits_Z = 0;
+
 unsigned char XData3 = 0;
 unsigned char XData2 = 0;
 unsigned char XData1 = 0;
 
+unsigned char YData3 = 0;
+unsigned char YData2 = 0;
+unsigned char YData1 = 0;
+
+unsigned char ZData3 = 0;
+unsigned char ZData2 = 0;
+unsigned char ZData1 = 0;
+
+unsigned char x =0;
 
 /*Prototipado de funciones*/
 void Disable_Watchdog(void);
@@ -105,24 +123,86 @@ int main(void)
     Config_Register();
     UART0_init();
     UART1_init();
-    Enable_I2C();
     I2C_init();
     Enable_UART0();
     Enable_UART1();
-
-    UART0_putstring("Megaproyecto: Sismografo UMG");
+    Enable_I2C();
+    //UART0_putstring("Megaproyecto: Sismografo UMG");
     UART1_putstring("Megaproyecto: Sismografo UMG");
-    Acelerometer_I2C_set(ADXL355_dir,RANGE,0x01);
-    Acelerometer_I2C_set(ADXL355_dir,POWER_CTL,0x06);
-    //RTC_I2C_set_seconds(RTC_slave_dir,RTC_seconds,0);
+    Acelerometer_I2C_set(ADXL355_dir,RANGE,1);
+    Acelerometer_I2C_set(ADXL355_dir,POWER_CTL,6);
+    ////RTC_I2C_set_seconds(RTC_slave_dir,RTC_seconds,0);
     Enable_Interrupts();
 
 
     while(1)
     {
-        XData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA3);
-        XData2 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA2);
-        XData1 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA1);
+        //XData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA3);
+        //XData2 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA2);
+        //XData1 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA1);
+
+        //YData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,YDATA3);
+        //YData2 = Acelerometer_I2C_get_Axis(ADXL355_dir,YDATA2);
+        //YData1 = Acelerometer_I2C_get_Axis(ADXL355_dir,YDATA1);
+
+        //ZData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,ZDATA3);
+        ZData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,ZDATA1);
+        UART0_putstring("Z3: ");
+        itoa(ZData3,buffer_1byte,16);
+        UART0_putstring(buffer_1byte);
+        UART0_putstring("\r\n");
+        _delay_cycles(500000);
+
+        ZData1 = Acelerometer_I2C_get_Axis(ADXL355_dir,ZDATA2);
+        UART0_putstring("Z1: ");
+        itoa(ZData1,buffer_1byte,16);
+        UART0_putstring(buffer_1byte);
+        UART0_putstring("\r\n");
+        _delay_cycles(500000);
+
+        ZData2 = Acelerometer_I2C_get_Axis(ADXL355_dir,ZDATA3);
+        UART0_putstring("Z2: ");
+        itoa(ZData2,buffer_1byte,16);
+        UART0_putstring(buffer_1byte);
+        UART0_putstring("\r\n");
+        _delay_cycles(500000);
+
+        //Resultado_16_bits_X = (XData1<<8|XData2);
+        //Resultado_16_bits_Y = (YData3<<8|YData2);
+        //Resultado_16_bits_Z = (ZData3<<8|ZData2);
+
+       // Resultado_16_bits_Z = (ZData2<<8|ZData1);
+        /*
+        UART0_putstring("El Total de X es: ");
+        ltoa(Resultado_16_bits_X,buffer);
+        UART0_putstring(buffer);        UART0_putstring("\r\n");
+
+
+        UART0_putstring("El Total de Y es: ");
+        ltoa(Resultado_16_bits_Y,buffer);
+        UART0_putstring(buffer);
+        UART0_putstring("\r\n");*/
+
+        Resultado_16_bits_Z = (ZData3<<8|ZData2);
+        UART0_putstring("El valor de Z: ");
+        ltoa(Resultado_16_bits_Z,buffer);
+        UART0_putstring(buffer);
+        UART0_putstring("\r\n");
+        Resultado_16_bits_Z = 0;
+        for(x = 0;x<26;x++)
+        {
+          buffer[x]=0;
+         }
+        _delay_cycles(500000);
+        /*
+        UART0_putstring("El Total de Z es: ");
+        ltoa(Resultado_16_bits_Z,buffer);
+        UART0_putstring(buffer);
+        UART0_putstring("\r\n");*/
+
+
+
+        /*
         UART0_putstring("El valor del XDATA3: ");
         itoa(XData3,buffer_1byte,10);
         UART0_putstring(buffer_1byte);
@@ -131,17 +211,14 @@ int main(void)
         UART0_putstring(buffer_1byte);
         UART0_putstring("El valor del XDATA3: ");
         itoa(XData1,buffer_1byte,10);
-        UART0_putstring(buffer_1byte);
+        UART0_putstring(buffer_1byte);*/
+        /*
+        Resultado_16_bits_X= (XData1<<8|XData2);
+        Resultado_20_bits_X = (XData1<<12|XData2<<4|XData3>>4);
+        UART0_putstring("Total: ");
+        ltoa(Resultado_16_bits_X,buffer);
+        UART0_putstring(buffer);*/
 
-        Resultado_20_bits_X = (XData3<<12|XData2<<4|XData1>>4);
-        _delay_cycles(500000);
-
-
-        //P1OUT^=(BIT1);
-        //_delay_cycles(500000);
-       //itoa(RTC_I2C_get_seconds(RTC_slave_dir,RTC_seconds),buffer,10);
-       //UART1_putstring(buffer);
-       //_delay_cycles(500000);
 
 
     }
@@ -193,8 +270,8 @@ void UART0_putstring(char *Stringptr)
         UART0_send(*Stringptr);
         Stringptr++;
     }
-    UART0_send(0x0D);
-    UART0_send(0x0A);
+    //UART0_send(0x0D);
+    //UART0_send(0x0A);
 }
 
 void Enable_UART0(void)
@@ -250,10 +327,11 @@ void I2C_init(void)
     UCB1CTL0 |=UCSYNC + UCMODE_3 + UCMST;
     UCB1BR0 = 12; //400Khz I2C Fast Mode
     UCB1BR1 = 0;
-    P4DIR &=(I2C1_SCL + I2C1_SDA); //Como entrada
-    P4REN |=(I2C1_SCL + I2C1_SDA);
-    P4OUT |=(I2C1_SCL + I2C1_SDA);
+   // P4DIR &=(I2C1_SCL + I2C1_SDA); //Como entrada
+    //P4REN |=(I2C1_SCL + I2C1_SDA);
+    //P4OUT |=(I2C1_SCL + I2C1_SDA);
     P4SEL |=(I2C1_SCL + I2C1_SDA);
+    UCB1CTL1 &=~(UCSWRST);
 }
 
 void Enable_I2C(void)
@@ -264,14 +342,14 @@ void Enable_I2C(void)
 void I2C_transmit(unsigned char slave_address, unsigned char slave_register, unsigned char data)
 {
     UCB1I2CSA = slave_address;
-    UCB1CTL1 |=UCTR + UCTXSTT;
+    UCB1CTL1 |= UCTR + UCTXSTT;
     UCB1TXBUF = slave_register;
-   // while(!(UCB1IFG & UCTXIFG));
-    //while(UCB1CTL1 & UCTXSTT);
+    while(!(UCB1IFG & UCTXIFG));
+    while(UCB1CTL1 & UCTXSTT);
     UCB1TXBUF = data;
-    //while(!(UCB1IFG & UCTXIFG));
+    while(!(UCB1IFG & UCTXIFG));
     UCB1CTL1 |= UCTXSTP;
-   // while(UCB1CTL1 & UCTXSTP);
+    while(UCB1CTL1 & UCTXSTP);
 }
 
 unsigned char I2C_receive(unsigned char slave_address, unsigned char slave_register)
@@ -281,20 +359,20 @@ unsigned char I2C_receive(unsigned char slave_address, unsigned char slave_regis
    UCB1I2CSA = slave_address;
    UCB1CTL1 |= UCTXSTT + UCTR;
    UCB1TXBUF = slave_register;
-  // while(!(UCB1IFG & UCTXIFG));
-//   while(UCB1CTL1 & UCTXSTT);
+   while(!(UCB1IFG & UCTXIFG));
+   while(UCB1CTL1 & UCTXSTT);
    UCB1CTL1 |= UCTXSTT;
    UCB1I2CSA = slave_address;
    UCB1CTL1 &=~(UCTR);
-   //while(UCB1CTL1 & UCTXSTT);
+   while(UCB1CTL1 & UCTXSTT);
    data = UCB1RXBUF;
    UCB1CTL1 |= UCTXSTP;
-//   while(UCB1CTL1 & UCTXSTP);
+   while(UCB1CTL1 & UCTXSTP);
    return data;
 
 }
 
-
+/*
 unsigned char decimaltobcd(unsigned char value)
 {
     return((value/10*16)+(value%10));
@@ -316,7 +394,7 @@ unsigned char RTC_I2C_get_seconds(unsigned char slave_address, unsigned char sla
     data=I2C_receive(slave_address,slave_register);
     return (bcdtodecimal(data) & 0x7F);
 }
-
+*/
 void Acelerometer_I2C_set(unsigned char slave_address, unsigned char slave_register, unsigned char data)
 {
     I2C_transmit(slave_address,slave_register,data);
@@ -354,6 +432,7 @@ void Read_from_Acelerometer_I2C(unsigned char slave_address, unsigned char slave
     UCB1CTL1 |= UCTXSTP;
     while(UCB1CTL1 & UCTXSTP);
 }
+
 void itoa(long unsigned int inteiro, char* string, int base){
     // por http://www.strudel.org.uk/itoa/
 
