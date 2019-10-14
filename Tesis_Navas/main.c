@@ -2,10 +2,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-#define BUTTON  BIT1
-#define LED1    BIT0
-#define LED2    BIT7
 #define UART0_RX BIT4
 #define UART0_TX BIT3
 #define UART1_RX BIT5
@@ -14,9 +12,11 @@
 #define I2C1_SDA BIT1
 #define UART0_BUFF_SIZE 40
 
-/*Registros del RTC usado en la prueba*/
-#define RTC_slave_dir       0x68
-#define RTC_seconds         0x00
+enum State
+{
+    nitido,
+    malo
+};
 
 /*Registros del Acelerometro ADXL355*/
 
@@ -58,18 +58,36 @@
 #define SELF_TEST       0x2E
 #define Reset           0x2F
 
-char buffer[18];
+union Data_32bits_X
+{
+    uint8_t data[3];
+    uint32_t var_32bits;
+};
+
+union Data_32bits_Y
+{
+    uint8_t data[3];
+    uint32_t var_32bits;
+};
+
+union Data_32bits_Z
+{
+    uint8_t data[3];
+    uint32_t var_32bits;
+};
+
 char buffer_1byte[3];
 char axis_buffer[9];
+char long_buffer[50];
 
 volatile  uint32_t Resultado_20_bits_X = 0;
-volatile  uint16_t Resultado_16_bits_X = 0;
+//volatile  uint16_t Resultado_16_bits_X = 0; No utilizada
 
 volatile  uint32_t Resultado_20_bits_Y = 0;
-volatile  uint16_t Resultado_16_bits_Y = 0;
+//volatile  uint16_t Resultado_16_bits_Y = 0; No utilizada
 
 volatile  uint32_t  Resultado_20_bits_Z = 0;
-volatile  uint16_t Resultado_16_bits_Z = 0;
+//volatile  uint16_t Resultado_16_bits_Z = 0; No utilizada
 
 unsigned char XData3 = 0;
 unsigned char XData2 = 0;
@@ -83,23 +101,27 @@ unsigned char ZData3 = 0;
 unsigned char ZData2 = 0;
 unsigned char ZData1 = 0;
 
-unsigned char x =0;
-unsigned char fsm_states = 1;
+unsigned int fsm_states = 0;
+
+
 //variables de pruebas
 
 /*Prototipado de funciones*/
 void Disable_Watchdog(void);
 void Config_Register(void);
 void Enable_Interrupts(void);
+void binario(int num);
 
 void UART0_init(void);
 void UART0_send(char data);
 void UART0_putstring(char *Stringptr);
+void UART0_putstringE(char *Stringptr);
 void Enable_UART0(void);
 
 void UART1_init(void);
 void UART1_send(char data);
 void UART1_putstring(char *Stringptr);
+void UART1_putstringE(char *Stringptr);
 void Enable_UART1(void);
 
 
@@ -107,12 +129,6 @@ void I2C_init(void);
 void I2C_transmit(unsigned char slave_address, unsigned char slave_register, unsigned char data);
 unsigned char I2C_receive(unsigned char slave_address, unsigned char slave_register);
 void Enable_I2C(void);
-
-
-unsigned char decimaltobcd(unsigned char value);
-unsigned char bcdtodecimal(unsigned char value);
-void RTC_I2C_set_seconds(unsigned char slave_address, unsigned char slave_register, unsigned char data);
-unsigned char RTC_I2C_get_seconds(unsigned char slave_address, unsigned char slave_register);
 
 void Acelerometer_I2C_set(unsigned char slave_address, unsigned char slave_register, unsigned char data);
 unsigned char Acelerometer_I2C_get_Axis(unsigned char slave_address, unsigned char register);
@@ -122,6 +138,10 @@ void itoa(long unsigned int inteiro, char* string, int base);
 
 int main(void)
 {
+
+    union Data_32bits_X Resolucion_32_bits_X;
+    union Data_32bits_Y Resolucion_32_bits_Y;
+    union Data_32bits_Z Resolucion_32_bits_Z;
     Disable_Watchdog();
     Config_Register();
     UART0_init();
@@ -138,14 +158,16 @@ int main(void)
     ////RTC_I2C_set_seconds(RTC_slave_dir,RTC_seconds,0);
     Enable_Interrupts();
 
+    fsm_states = nitido;
+
 
     while(1)
     {
                     UART0_putstring("Pruebas de primera lectura \r\n");
                     Read_from_Acelerometer_I2C(ADXL355_dir,XDATA3,axis_buffer,9);
-
                     UART0_putstring("El valor del primer byte de X (0x08) es: ");
                     XData3 = axis_buffer[0];
+                    Resolucion_32_bits_X.data[2]=XData3;
                     itoa(XData3,buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -153,6 +175,7 @@ int main(void)
 
                     UART0_putstring("El valor del segundo byte de X (0x09) es: ");
                     XData2 = axis_buffer[1];
+                    Resolucion_32_bits_X.data[1]=XData2;
                     itoa(XData2,buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -160,13 +183,24 @@ int main(void)
 
                     UART0_putstring("El valor del tercer byte de X (0x0A) es: ");
                     XData1 = axis_buffer[2];
+                    Resolucion_32_bits_X.data[0]=XData1;
                     itoa(XData1,buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
 
+                    UART0_putstring("La aceleracion en el eje X es de: ");
+                    Resultado_20_bits_X = (Resolucion_32_bits_X.var_32bits>>4);
+                    ltoa(Resultado_20_bits_X,long_buffer);
+                    UART0_putstring(long_buffer);
+                    UART0_putstring("\r\n");
+                    _delay_cycles(500000);
+
+
+
                     UART0_putstring("El valor del primer byte de Y (0x0B) es: ");
                     YData3 = axis_buffer[3];
+                    Resolucion_32_bits_Y.data[2]=YData3;
                     itoa(YData3,buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -174,6 +208,7 @@ int main(void)
 
                     UART0_putstring("El valor del segundo byte de Y (0x0C) es: ");
                     YData2 = axis_buffer[4];
+                    Resolucion_32_bits_Y.data[1]=YData2;
                     itoa(YData2,buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -181,13 +216,23 @@ int main(void)
 
                     UART0_putstring("El valor del tercer byte de Y (0x0D) es: ");
                     YData1 = axis_buffer[5];
+                    Resolucion_32_bits_Y.data[0]=YData1;
                     itoa(YData1, buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
 
+                    UART0_putstring("La aceleracion en el eje Y es de: ");
+                    Resultado_20_bits_Y = (Resolucion_32_bits_Y.var_32bits>>4);
+                    ltoa(Resultado_20_bits_Y,long_buffer);
+                    UART0_putstring(long_buffer);
+                    UART0_putstring("\r\n");
+                    _delay_cycles(500000);
+
+
                     UART0_putstring("El valor del primer byte de Z (0x0E) es: ");
                     ZData3 = axis_buffer[6];
+                    Resolucion_32_bits_Z.data[2]=ZData3;
                     itoa(ZData3, buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -195,6 +240,7 @@ int main(void)
 
                     UART0_putstring("El valor del segundo byte de Z (0x0F) es: ");
                     ZData2 = axis_buffer[7];
+                    Resolucion_32_bits_Z.data[1]=ZData2;
                     itoa(ZData2, buffer_1byte, 16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
@@ -202,94 +248,19 @@ int main(void)
 
                     UART0_putstring("El valor del primer byte de Z (0x10) es: ");
                     ZData1 = axis_buffer[8];
+                    Resolucion_32_bits_Z.data[0]=ZData1;
                     itoa(ZData1, buffer_1byte,16);
                     UART0_putstring(buffer_1byte);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
 
+                    UART0_putstring("La aceleracion en el eje Z es de: ");
+                    Resultado_20_bits_Z = (Resolucion_32_bits_Z.var_32bits>>4);
+                    ltoa(Resultado_20_bits_Z,long_buffer);
+                    UART0_putstring(long_buffer);
+                    UART0_putstring("\r\n");
+                    _delay_cycles(500000);
 
-
-
-
-
-
-
-
-
-        /*
-
-        switch(fsm_states)
-        {
-        case(0):
-            {
-                UART0_putstring("Medicion de pruebas,no tomar en cuenta\r\n");
-                XData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA3);
-                itoa(XData3,buffer_1byte,16);
-                UART0_putstring("XData3 es igual a: ");
-                UART0_putstring(buffer_1byte);
-                UART0_putstring("\r\n");
-                fsm_states = 1;
-                break;
-            }
-        case(1):
-            {
-                UART0_putstring("Leyendo el Eje X\r\n");
-                XData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA1);
-                itoa(XData3, buffer_1byte,10);
-                UART0_putstring("XData3 es igual a: ");
-                UART0_putstring(buffer_1byte);
-                UART0_putstring("\r\n");
-                _delay_cycles(500000);
-
-                XData2 = Acelerometer_I2C_get_Axis(ADXL355_dir, XDATA2);
-                itoa(XData2, buffer_1byte,10);
-                UART0_putstring("XData2 es igual a: ");
-                UART0_putstring(buffer_1byte);
-                UART0_putstring("\r\n");
-                _delay_cycles(500000);
-
-                XData1 = Acelerometer_I2C_get_Axis(ADXL355_dir, XDATA3);
-                itoa(XData1, buffer_1byte,10);
-                UART0_putstring("XData1 es igual a: ");
-                UART0_putstring(buffer_1byte);
-                UART0_putstring("\r\n");
-                _delay_cycles(500000);
-
-               // UART0_putstring("El valor total es de: ");
-                //Resultado_20_bits_X = (long long )(XData1<<12|XData2<<4|XData3>>4);
-                //ltoa(Resultado_20_bits_X,buffer);
-                //UART0_putstring(buffer);
-                //UART0_putstring("\r\n");
-                //_delay_cycles(500000);
-                fsm_states = 1;
-                break;
-            }//end case(1)
-
-        case(2):
-            {
-            UART0_putstring("Leyendo el Eje Y\r\n");
-            XData3 = Acelerometer_I2C_get_Axis(ADXL355_dir,XDATA1);
-            itoa(XData3, buffer_1byte,16);
-            UART0_putstring("XData3 es igual a: ");
-            UART0_putstring(buffer_1byte);
-            UART0_putstring("\r\n");
-
-            XData2 = Acelerometer_I2C_get_Axis(ADXL355_dir, XDATA2);
-            itoa(XData2, buffer_1byte,16);
-            UART0_putstring("XData2 es igual a: ");
-            UART0_putstring(buffer_1byte);
-            UART0_putstring("\r\n");
-
-            XData1 = Acelerometer_I2C_get_Axis(ADXL355_dir, XDATA3);
-            itoa(XData1, buffer_1byte,16);
-            UART0_putstring("XData1 es igual a: ");
-            UART0_putstring(buffer_1byte);
-            UART0_putstring("\r\n");
-
-            _delay_cycles(500000);
-
-            }
-        }//end Swtich(fsm_states)*/
 
     }//end while(1)
 }//END int main()
@@ -306,12 +277,6 @@ void Disable_Watchdog(void)
 
 void Config_Register(void)
 {
-        P2DIR &=~(BUTTON);
-        P2REN |=(BUTTON);
-        P2OUT |=(BUTTON);
-
-        P1DIR |=LED1;
-        P1OUT &=~(LED1);
 
        // P4SEL |=(I2C1_SCL + I2C1_SDA);
 }
@@ -340,8 +305,17 @@ void UART0_putstring(char *Stringptr)
         UART0_send(*Stringptr);
         Stringptr++;
     }
-    //UART0_send(0x0D);
-    //UART0_send(0x0A);
+}
+
+void UART0_putstringE(char *Stringptr)
+{
+    while(*Stringptr !=0x00)
+    {
+        UART0_send(*Stringptr);
+        Stringptr++;
+    }
+    UART0_send(0x0D);
+    UART0_send(0x0A);
 }
 
 void Enable_UART0(void)
@@ -375,6 +349,15 @@ void UART1_putstring(char *Stringptr)
         UART1_send(*Stringptr);
         Stringptr++;
     }
+}
+
+void UART1_putstringE(char *Stringptr)
+{
+    while(*Stringptr !=0x00)
+    {
+        UART1_send(*Stringptr);
+        Stringptr++;
+    }
     UART1_send(0x0D);
     UART1_send(0x0A);
 }
@@ -397,9 +380,6 @@ void I2C_init(void)
     UCB1CTL0 |=UCSYNC + UCMODE_3 + UCMST;
     UCB1BR0 = 12; //400Khz I2C Fast Mode
     UCB1BR1 = 0;
-   // P4DIR &=(I2C1_SCL + I2C1_SDA); //Como entrada
-    //P4REN |=(I2C1_SCL + I2C1_SDA);
-    //P4OUT |=(I2C1_SCL + I2C1_SDA);
     P4SEL |=(I2C1_SCL + I2C1_SDA);
     UCB1CTL1 &=~(UCSWRST);
 }
@@ -442,29 +422,6 @@ unsigned char I2C_receive(unsigned char slave_address, unsigned char slave_regis
 
 }
 
-/*
-unsigned char decimaltobcd(unsigned char value)
-{
-    return((value/10*16)+(value%10));
-}
-
-unsigned char bcdtodecimal(unsigned char value)
-{
-    return((value/16*10)+(value%16));
-}
-
-void RTC_I2C_set_seconds(unsigned char slave_address, unsigned char slave_register, unsigned char data)
-{
-    I2C_transmit(slave_address,slave_register,decimaltobcd(data));
-}
-
-unsigned char RTC_I2C_get_seconds(unsigned char slave_address, unsigned char slave_register)
-{
-    unsigned char data;
-    data=I2C_receive(slave_address,slave_register);
-    return (bcdtodecimal(data) & 0x7F);
-}
-*/
 void Acelerometer_I2C_set(unsigned char slave_address, unsigned char slave_register, unsigned char data)
 {
     I2C_transmit(slave_address,slave_register,data);
@@ -530,4 +487,22 @@ void itoa(long unsigned int inteiro, char* string, int base){
         *ptr--= *ptr1;
         *ptr1++ = tmp_char;
     }
+}
+
+void binario(int num)
+{
+   int aux;
+
+if(num==0)//<-La funcion recursiva tiene como condicion de salida,
+         //cuando el numero es cero
+   return;
+           //si no
+   aux=num%2;//<-"guardamos" el residuo de la divicion
+   num=num/2;//<-actualizamos el valor del numero, para la proxima llamada
+             //recursiva
+   binario(num);//<-hacemos la sig llamada recursiva con nuestro valor actualizado
+   printf("%d",aux);//<-Al poner la llamada de impresion despues de la llamada
+                    //recursiva sig, hacemos que imprima primero las llamadas
+                    //que se realizaron al final, haciendo el efecto de imprimir
+                //inversamente
 }
