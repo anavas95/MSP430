@@ -81,12 +81,15 @@ char axis_buffer[9];
 char long_buffer[50];
 
 volatile  uint32_t Resultado_20_bits_X = 0;
+volatile  uint32_t Resultado_20_bits_X_Real = 0;
 //volatile  uint16_t Resultado_16_bits_X = 0; No utilizada
 
 volatile  uint32_t Resultado_20_bits_Y = 0;
+volatile  uint32_t Resultado_20_bits_Y_Real = 0;
 //volatile  uint16_t Resultado_16_bits_Y = 0; No utilizada
 
 volatile  uint32_t  Resultado_20_bits_Z = 0;
+volatile  uint32_t Resultado_20_bits_Z_Real = 0;
 //volatile  uint16_t Resultado_16_bits_Z = 0; No utilizada
 
 unsigned char XData3 = 0;
@@ -133,8 +136,12 @@ void Enable_I2C(void);
 void Acelerometer_I2C_set(unsigned char slave_address, unsigned char slave_register, unsigned char data);
 unsigned char Acelerometer_I2C_get_Axis(unsigned char slave_address, unsigned char register);
 void Read_from_Acelerometer_I2C(unsigned char slave_address, unsigned char start_register_slave,char *buffer,unsigned char cuantity_registers);
-
+int32_t Accel_from_Acelerometer(uint32_t aceleration);
 void itoa(long unsigned int inteiro, char* string, int base);
+
+union Data_32bits_X Resolucion_32_bits_X;
+union Data_32bits_Y Resolucion_32_bits_Y;
+union Data_32bits_Z Resolucion_32_bits_Z;
 
 int main(void)
 {
@@ -163,103 +170,109 @@ int main(void)
 
     while(1)
     {
-                    UART0_putstring("Pruebas de primera lectura \r\n");
+                     UART0_putstring("********Pruebas de Aceleracion********\r\n");
+                   //UART0_putstring("Pruebas de primera lectura \r\n");
                     Read_from_Acelerometer_I2C(ADXL355_dir,XDATA3,axis_buffer,9);
-                    UART0_putstring("El valor del primer byte de X (0x08) es: ");
+                   // UART0_putstring("El valor del primer byte de X (0x08) es: ");
                     XData3 = axis_buffer[0];
                     Resolucion_32_bits_X.data[2]=XData3;
-                    itoa(XData3,buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(XData3,buffer_1byte,16);
+                   // UART0_putstring(buffer_1byte);
+                   // UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
-                    UART0_putstring("El valor del segundo byte de X (0x09) es: ");
+                    //UART0_putstring("El valor del segundo byte de X (0x09) es: ");
                     XData2 = axis_buffer[1];
                     Resolucion_32_bits_X.data[1]=XData2;
-                    itoa(XData2,buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(XData2,buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                    //UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
-                    UART0_putstring("El valor del tercer byte de X (0x0A) es: ");
+                    //UART0_putstring("El valor del tercer byte de X (0x0A) es: ");
                     XData1 = axis_buffer[2];
                     Resolucion_32_bits_X.data[0]=XData1;
-                    itoa(XData1,buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(XData1,buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                    //UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
                     UART0_putstring("La aceleracion en el eje X es de: ");
                     Resultado_20_bits_X = (Resolucion_32_bits_X.var_32bits>>4);
-                    ltoa(Resultado_20_bits_X,long_buffer);
+                    Resultado_20_bits_X_Real = Accel_from_Acelerometer( Resultado_20_bits_X);
+                    ltoa(Resultado_20_bits_X_Real,long_buffer);
                     UART0_putstring(long_buffer);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
 
 
 
-                    UART0_putstring("El valor del primer byte de Y (0x0B) es: ");
+                    //UART0_putstring("El valor del primer byte de Y (0x0B) es: ");
                     YData3 = axis_buffer[3];
                     Resolucion_32_bits_Y.data[2]=YData3;
-                    itoa(YData3,buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(YData3,buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                    //UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
-                    UART0_putstring("El valor del segundo byte de Y (0x0C) es: ");
+                    //UART0_putstring("El valor del segundo byte de Y (0x0C) es: ");
                     YData2 = axis_buffer[4];
                     Resolucion_32_bits_Y.data[1]=YData2;
-                    itoa(YData2,buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(YData2,buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                   // UART0_putstring("\r\n");
+                   // _delay_cycles(500000);
 
-                    UART0_putstring("El valor del tercer byte de Y (0x0D) es: ");
+                    //UART0_putstring("El valor del tercer byte de Y (0x0D) es: ");
                     YData1 = axis_buffer[5];
                     Resolucion_32_bits_Y.data[0]=YData1;
-                    itoa(YData1, buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(YData1, buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                    //UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
                     UART0_putstring("La aceleracion en el eje Y es de: ");
                     Resultado_20_bits_Y = (Resolucion_32_bits_Y.var_32bits>>4);
-                    ltoa(Resultado_20_bits_Y,long_buffer);
+                    Resultado_20_bits_Y_Real = Accel_from_Acelerometer(Resultado_20_bits_Y);
+                    ltoa(Resultado_20_bits_Y_Real,long_buffer);
                     UART0_putstring(long_buffer);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
 
 
-                    UART0_putstring("El valor del primer byte de Z (0x0E) es: ");
+                    //UART0_putstring("El valor del primer byte de Z (0x0E) es: ");
                     ZData3 = axis_buffer[6];
                     Resolucion_32_bits_Z.data[2]=ZData3;
-                    itoa(ZData3, buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(ZData3, buffer_1byte,16);
+                   // UART0_putstring(buffer_1byte);
+                   // UART0_putstring("\r\n");
+                   // _delay_cycles(500000);
 
-                    UART0_putstring("El valor del segundo byte de Z (0x0F) es: ");
-                    ZData2 = axis_buffer[7];
+                    //UART0_putstring("El valor del segundo byte de Z (0x0F) es: ");
+                    //ZData2 = axis_buffer[7];
                     Resolucion_32_bits_Z.data[1]=ZData2;
-                    itoa(ZData2, buffer_1byte, 16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(ZData2, buffer_1byte, 16);
+                   // UART0_putstring(buffer_1byte);
+                   // UART0_putstring("\r\n");
+                   // _delay_cycles(500000);
 
-                    UART0_putstring("El valor del primer byte de Z (0x10) es: ");
+                    //UART0_putstring("El valor del primer byte de Z (0x10) es: ");
                     ZData1 = axis_buffer[8];
                     Resolucion_32_bits_Z.data[0]=ZData1;
-                    itoa(ZData1, buffer_1byte,16);
-                    UART0_putstring(buffer_1byte);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                    //itoa(ZData1, buffer_1byte,16);
+                    //UART0_putstring(buffer_1byte);
+                    //UART0_putstring("\r\n");
+                    //_delay_cycles(500000);
 
                     UART0_putstring("La aceleracion en el eje Z es de: ");
                     Resultado_20_bits_Z = (Resolucion_32_bits_Z.var_32bits>>4);
-                    ltoa(Resultado_20_bits_Z,long_buffer);
+                    Resultado_20_bits_Z_Real = Accel_from_Acelerometer(Resultado_20_bits_Z);
+                    ltoa(Resultado_20_bits_Z_Real,long_buffer);
                     UART0_putstring(long_buffer);
                     UART0_putstring("\r\n");
                     _delay_cycles(500000);
+
+
 
 
     }//end while(1)
@@ -489,20 +502,19 @@ void itoa(long unsigned int inteiro, char* string, int base){
     }
 }
 
-void binario(int num)
+int32_t Accel_from_Acelerometer(uint32_t aceleration)
 {
-   int aux;
+    int32_t volatile data_acelerometer;
 
-if(num==0)//<-La funcion recursiva tiene como condicion de salida,
-         //cuando el numero es cero
-   return;
-           //si no
-   aux=num%2;//<-"guardamos" el residuo de la divicion
-   num=num/2;//<-actualizamos el valor del numero, para la proxima llamada
-             //recursiva
-   binario(num);//<-hacemos la sig llamada recursiva con nuestro valor actualizado
-   printf("%d",aux);//<-Al poner la llamada de impresion despues de la llamada
-                    //recursiva sig, hacemos que imprima primero las llamadas
-                    //que se realizaron al final, haciendo el efecto de imprimir
-                //inversamente
+    aceleration = (aceleration & 0x000FFFFF);
+
+    if((aceleration & 0x00080000) ==0x00080000)
+    {
+        data_acelerometer = (aceleration | 0xFFF00000);
+    }
+    else
+    {
+        data_acelerometer = aceleration;
+    }
+    return data_acelerometer;
 }
