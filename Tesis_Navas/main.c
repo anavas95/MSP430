@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #define UART0_RX BIT4
 #define UART0_TX BIT3
@@ -11,11 +12,24 @@
 #define I2C1_SCL BIT2
 #define I2C1_SDA BIT1
 #define UART0_BUFF_SIZE 40
+#define LED_1_Scale_green   BIT1
+#define LED_2_Scale_yellow  BIT0
+#define LED_3_Scale_orange  BIT0
+#define LED_4_Scale_red     BIT1
+#define EN_Speaker          BIT6
 
-enum State
+enum State_bool
 {
-    nitido,
-    malo
+    Off,
+    On,
+};
+
+enum Alarm_color
+{
+    Green,
+    Yellow,
+    Orange,
+    Red,
 };
 
 /*Registros del Acelerometro ADXL355*/
@@ -92,6 +106,8 @@ volatile  uint32_t  Resultado_20_bits_Z = 0;
 volatile  uint32_t Resultado_20_bits_Z_Real = 0;
 //volatile  uint16_t Resultado_16_bits_Z = 0; No utilizada
 
+
+
 unsigned char XData3 = 0;
 unsigned char XData2 = 0;
 unsigned char XData1 = 0;
@@ -104,7 +120,14 @@ unsigned char ZData3 = 0;
 unsigned char ZData2 = 0;
 unsigned char ZData1 = 0;
 
-unsigned int fsm_states = 0;
+//unsigned int fsm_states = 0;
+volatile uint32_t Resultante = 0;
+volatile uint32_t Resultante_anterior = 1700;
+volatile uint32_t Resultante_actual = 1700;
+volatile unsigned char f_timer = 0;
+unsigned char  state_speaker = 0;
+volatile int count_enable_speaker = 0;
+
 
 
 //variables de pruebas
@@ -113,7 +136,9 @@ unsigned int fsm_states = 0;
 void Disable_Watchdog(void);
 void Config_Register(void);
 void Enable_Interrupts(void);
-void binario(int num);
+void Set_ON_OFF(unsigned int color, unsigned int state);
+void Config_Timers(void);
+
 
 void UART0_init(void);
 void UART0_send(char data);
@@ -139,18 +164,20 @@ void Read_from_Acelerometer_I2C(unsigned char slave_address, unsigned char start
 int32_t Accel_from_Acelerometer(uint32_t aceleration);
 void itoa(long unsigned int inteiro, char* string, int base);
 
+unsigned char Enable_Speaker(unsigned int state);
+
 union Data_32bits_X Resolucion_32_bits_X;
 union Data_32bits_Y Resolucion_32_bits_Y;
 union Data_32bits_Z Resolucion_32_bits_Z;
 
+
+
 int main(void)
 {
 
-    union Data_32bits_X Resolucion_32_bits_X;
-    union Data_32bits_Y Resolucion_32_bits_Y;
-    union Data_32bits_Z Resolucion_32_bits_Z;
     Disable_Watchdog();
     Config_Register();
+    Config_Timers();
     UART0_init();
     UART1_init();
     I2C_init();
@@ -165,119 +192,130 @@ int main(void)
     ////RTC_I2C_set_seconds(RTC_slave_dir,RTC_seconds,0);
     Enable_Interrupts();
 
-    fsm_states = nitido;
-
-
     while(1)
     {
-                     UART0_putstring("********Pruebas de Aceleracion********\r\n");
-                   //UART0_putstring("Pruebas de primera lectura \r\n");
-                    Read_from_Acelerometer_I2C(ADXL355_dir,XDATA3,axis_buffer,9);
-                   // UART0_putstring("El valor del primer byte de X (0x08) es: ");
-                    XData3 = axis_buffer[0];
-                    Resolucion_32_bits_X.data[2]=XData3;
-                    //itoa(XData3,buffer_1byte,16);
-                   // UART0_putstring(buffer_1byte);
-                   // UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
+        Read_from_Acelerometer_I2C(ADXL355_dir,XDATA3,axis_buffer,9);
+        XData3 = axis_buffer[0];
+        Resolucion_32_bits_X.data[2]=XData3;
+        XData2 = axis_buffer[1];
+        Resolucion_32_bits_X.data[1]=XData2;
+        XData1 = axis_buffer[2];
+        Resolucion_32_bits_X.data[0]=XData1;
+        Resultado_20_bits_X = (Resolucion_32_bits_X.var_32bits>>4);
+        Resultado_20_bits_X_Real = Accel_from_Acelerometer( Resultado_20_bits_X);
 
-                    //UART0_putstring("El valor del segundo byte de X (0x09) es: ");
-                    XData2 = axis_buffer[1];
-                    Resolucion_32_bits_X.data[1]=XData2;
-                    //itoa(XData2,buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                    //UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
+        YData3 = axis_buffer[3];
+        Resolucion_32_bits_Y.data[2]=YData3;
+        YData2 = axis_buffer[4];
+        Resolucion_32_bits_Y.data[1]=YData2;
+        YData1 = axis_buffer[5];
+        Resolucion_32_bits_Y.data[0]=YData1;
+        Resultado_20_bits_Y = (Resolucion_32_bits_Y.var_32bits>>4);
+        Resultado_20_bits_Y_Real = Accel_from_Acelerometer(Resultado_20_bits_Y);
 
-                    //UART0_putstring("El valor del tercer byte de X (0x0A) es: ");
-                    XData1 = axis_buffer[2];
-                    Resolucion_32_bits_X.data[0]=XData1;
-                    //itoa(XData1,buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                    //UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
+        ZData3 = axis_buffer[6];
+        Resolucion_32_bits_Z.data[2]=ZData3;
+        ZData2 = axis_buffer[7];
+        Resolucion_32_bits_Z.data[1]=ZData2;
+        ZData1 = axis_buffer[8];
+        Resolucion_32_bits_Z.data[0]=ZData1;
+        Resultado_20_bits_Z = (Resolucion_32_bits_Z.var_32bits>>4);
+        Resultado_20_bits_Z_Real = Accel_from_Acelerometer(Resultado_20_bits_Z);
 
-                    UART0_putstring("La aceleracion en el eje X es de: ");
-                    Resultado_20_bits_X = (Resolucion_32_bits_X.var_32bits>>4);
-                    Resultado_20_bits_X_Real = Accel_from_Acelerometer( Resultado_20_bits_X);
-                    ltoa(Resultado_20_bits_X_Real,long_buffer);
-                    UART0_putstring(long_buffer);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+        Resultante = sqrt((Resultado_20_bits_X_Real*Resultado_20_bits_X_Real)+(Resultado_20_bits_Y_Real*Resultado_20_bits_Y_Real));
+        ltoa(Resultante, long_buffer);
 
 
+        if(f_timer)
+        {
+            f_timer = 0;
 
-                    //UART0_putstring("El valor del primer byte de Y (0x0B) es: ");
-                    YData3 = axis_buffer[3];
-                    Resolucion_32_bits_Y.data[2]=YData3;
-                    //itoa(YData3,buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                    //UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
+            if(Resultante > Resultante_anterior)
+            {
+                if(Resultante<1792)
+                {
+                    Set_ON_OFF(Green, Off);
+                    Set_ON_OFF(Yellow, Off);
+                    Set_ON_OFF(Orange, Off);
+                    Set_ON_OFF(Red, Off);
+                    count_enable_speaker = 0;
+                }
 
-                    //UART0_putstring("El valor del segundo byte de Y (0x0C) es: ");
-                    YData2 = axis_buffer[4];
-                    Resolucion_32_bits_Y.data[1]=YData2;
-                    //itoa(YData2,buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                   // UART0_putstring("\r\n");
-                   // _delay_cycles(500000);
-
-                    //UART0_putstring("El valor del tercer byte de Y (0x0D) es: ");
-                    YData1 = axis_buffer[5];
-                    Resolucion_32_bits_Y.data[0]=YData1;
-                    //itoa(YData1, buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                    //UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
-
-                    UART0_putstring("La aceleracion en el eje Y es de: ");
-                    Resultado_20_bits_Y = (Resolucion_32_bits_Y.var_32bits>>4);
-                    Resultado_20_bits_Y_Real = Accel_from_Acelerometer(Resultado_20_bits_Y);
-                    ltoa(Resultado_20_bits_Y_Real,long_buffer);
-                    UART0_putstring(long_buffer);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                if(Resultante>1792 && Resultante<3366)
+                {
+                      UART1_putstring("Nivel2:");
+                      UART1_putstringE(long_buffer);
+                      Set_ON_OFF(Green,On);
+                      Set_ON_OFF(Yellow,Off);
+                      Set_ON_OFF(Orange,Off);
+                      Set_ON_OFF(Red,Off);
+                      count_enable_speaker = 0;
 
 
-                    //UART0_putstring("El valor del primer byte de Z (0x0E) es: ");
-                    ZData3 = axis_buffer[6];
-                    Resolucion_32_bits_Z.data[2]=ZData3;
-                    //itoa(ZData3, buffer_1byte,16);
-                   // UART0_putstring(buffer_1byte);
-                   // UART0_putstring("\r\n");
-                   // _delay_cycles(500000);
+                 }
 
-                    //UART0_putstring("El valor del segundo byte de Z (0x0F) es: ");
-                    //ZData2 = axis_buffer[7];
-                    Resolucion_32_bits_Z.data[1]=ZData2;
-                    //itoa(ZData2, buffer_1byte, 16);
-                   // UART0_putstring(buffer_1byte);
-                   // UART0_putstring("\r\n");
-                   // _delay_cycles(500000);
+                 if(Resultante>3366 && Resultante<6784)
+                 {
+                      UART1_putstring("Nivel3:");
+                      UART1_putstringE(long_buffer);
+                      Set_ON_OFF(Green,On);
+                      Set_ON_OFF(Yellow,On);
+                      Set_ON_OFF(Orange,Off);
+                      Set_ON_OFF(Red,Off);
 
-                    //UART0_putstring("El valor del primer byte de Z (0x10) es: ");
-                    ZData1 = axis_buffer[8];
-                    Resolucion_32_bits_Z.data[0]=ZData1;
-                    //itoa(ZData1, buffer_1byte,16);
-                    //UART0_putstring(buffer_1byte);
-                    //UART0_putstring("\r\n");
-                    //_delay_cycles(500000);
+                  }
 
-                    UART0_putstring("La aceleracion en el eje Z es de: ");
-                    Resultado_20_bits_Z = (Resolucion_32_bits_Z.var_32bits>>4);
-                    Resultado_20_bits_Z_Real = Accel_from_Acelerometer(Resultado_20_bits_Z);
-                    ltoa(Resultado_20_bits_Z_Real,long_buffer);
-                    UART0_putstring(long_buffer);
-                    UART0_putstring("\r\n");
-                    _delay_cycles(500000);
+                  if(Resultante>6784 && Resultante<16768)
+                  {
+                      UART1_putstring("Nivel4:");
+                      UART1_putstringE(long_buffer);
+                      Set_ON_OFF(Green, On);
+                      Set_ON_OFF(Yellow, On);
+                      Set_ON_OFF(Orange, On);
+                      Set_ON_OFF(Red, Off);
+                      state_speaker = Enable_Speaker(On);
 
+                  }
 
+                  if(Resultante>16768)
+                  {
+                      UART1_putstring("Nivel5:");
+                      UART1_putstringE(long_buffer);
+                      Set_ON_OFF(Green, On);
+                      Set_ON_OFF(Yellow, On);
+                      Set_ON_OFF(Orange, On);
+                      Set_ON_OFF(Red, On);
+                      state_speaker = Enable_Speaker(On);
 
+                   }
+
+                   if(state_speaker)
+                   {
+                        count_enable_speaker++;
+                        if(count_enable_speaker>=10)
+                        {
+                          state_speaker = Enable_Speaker(Off);
+                          count_enable_speaker = 0;
+                        }
+                     state_speaker = 0;
+                    }
+
+               Resultante_anterior = Resultante;
+             }
+            else
+            {
+                Resultante_anterior = 0;
+            }
+        }
 
     }//end while(1)
 }//END int main()
 
+#pragma vector=TIMER0_A0_VECTOR
+__interrupt void Timer0_ISR(void)
+{
+    f_timer = 1;
+}
 
 
 
@@ -290,7 +328,17 @@ void Disable_Watchdog(void)
 
 void Config_Register(void)
 {
+    P2DIR |= (LED_1_Scale_green + LED_2_Scale_yellow); //BIT0 Y BIT1 como salida
+    P2OUT &=~(LED_1_Scale_green + LED_2_Scale_yellow); //BIT0 y BIT1 inicializado en bajo
 
+    P3DIR |= (LED_3_Scale_orange + LED_4_Scale_red);   //BIT0 y BIT1 como salida
+    P3OUT &=~(LED_3_Scale_orange + LED_4_Scale_red);   //BIT0 y BIT1 inicializado en bajo
+
+    P2DIR |= (EN_Speaker);   //BIT6 como salida
+    P2OUT &=~(EN_Speaker);   //BIT6 inicializado en bajo
+
+   // P2DIR = 0xFF;
+   // P3DIR = 0xFF;
        // P4SEL |=(I2C1_SCL + I2C1_SDA);
 }
 
@@ -383,6 +431,7 @@ void Enable_UART1(void)
 void Enable_Interrupts(void)
 {
     UCA0IE   |= UCRXIE; //Interrupcion por recepcion de uart0
+    TA0CCTL0 |=CCIE;
     _bis_SR_register(GIE);
 }
 
@@ -518,3 +567,110 @@ int32_t Accel_from_Acelerometer(uint32_t aceleration)
     }
     return data_acelerometer;
 }
+
+void Set_ON_OFF(unsigned int color, unsigned int state)
+{
+    if(color == Green)
+    {
+        switch(state)
+        {
+            case Off:
+            {
+                P2OUT &=~(LED_1_Scale_green);
+                break;
+            }
+
+            case On:
+            {
+                P2OUT |=(LED_1_Scale_green);
+                break;
+            }
+        }
+    }
+
+    if(color == Yellow)
+    {
+        switch(state)
+        {
+            case Off:
+            {
+                P2OUT &=~(LED_2_Scale_yellow);
+                break;
+            }
+
+            case On:
+            {
+                P2OUT |=(LED_2_Scale_yellow);
+                break;
+            }
+        }
+    }
+
+    if(color == Orange)
+    {
+        switch(state)
+        {
+            case Off:
+            {
+                P3OUT &=~(LED_3_Scale_orange);
+                break;
+            }
+
+            case On:
+            {
+                P3OUT |=(LED_3_Scale_orange);
+                break;
+            }
+        }
+    }
+
+    if(color == Red)
+    {
+        switch(state)
+        {
+            case Off:
+            {
+                P3OUT &=~(LED_4_Scale_red);
+                break;
+            }
+
+            case On:
+            {
+                P3OUT |=(LED_4_Scale_red);
+                break;
+            }
+        }
+    }
+}
+
+void Config_Timers(void)
+{
+    TA0CTL |=(TASSEL_1 + MC_1 +ID_3); //ALCK+UP+PRESCALER 8
+    TA0CCR0 = 1024;
+    //TA0CCR0 = 4098;
+    //TA0CCR0 = 8196; //primer valor
+    //TA0CCR0 = 20492;
+
+}
+
+unsigned char Enable_Speaker(unsigned int state)
+{
+    switch(state)
+    {
+        case Off:
+        {
+            P2OUT &=~(EN_Speaker);
+            return 0;
+            break;
+            //return 0;
+        }
+        case On:
+        {
+            P2OUT |=(EN_Speaker);
+            return 1;
+            break;
+        }
+    }
+}
+
+
